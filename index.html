@@ -2305,7 +2305,7 @@
                 <label style="font-weight:bold;">ศาสตร์ที่ใช้</label>
                 <input type="text" id="ftProfileScience" class="text-input">
                 <label style="font-weight:bold;">แนะนำตนเอง</label>
-                <textarea id="ftProfileIntro" style="height:60px;"></textarea>
+                <textarea id="ftProfileIntro" style="height:165px;"></textarea>
                 <label style="font-weight:bold;">ธนาคาร</label>
                 <input type="text" id="ftProfileBankName" class="text-input" disabled style="background:#eee; color:#666;">
                 <label style="font-weight:bold;">เลขบัญชีธนาคาร</label>
@@ -2403,7 +2403,7 @@
                 <input type="text" id="ftFullScience" class="text-input" placeholder="เช่น ไพ่ยิปซี, โหราศาสตร์ไทย">
 
                 <label style="font-weight:bold;">แนะนำตนเอง</label>
-                <textarea id="ftFullIntro" style="height:60px;" placeholder="แนะนำตัวให้ลูกดวงรู้จัก..."></textarea>
+                <textarea id="ftFullIntro" style="height:165px;" placeholder="แนะนำตัวให้ลูกดวงรู้จัก..."></textarea>
 
                 <label style="font-weight:bold; display:block;">รูปถ่ายหมอดู (สำหรับแสดงในหน้าโปรไฟล์ให้ลูกดวงเห็น)</label>
                 <img id="ftFullPhotoPreview" class="ft-photo-preview hidden-element" alt="ตัวอย่างรูปหมอดู">
@@ -4402,7 +4402,7 @@
                 const inputRow = document.createElement('div');
                 inputRow.className = 'ft-chat-input-row';
                 const textarea = document.createElement('textarea');
-                textarea.placeholder = 'พิมพ์คำทำนาย/ข้อความตอบกลับลูกดวง...';
+                textarea.placeholder = 'พิมพ์ข้อความ...';
                 textarea.rows = 1;
                 textarea.addEventListener('input', function() { autoResizeChatTextarea_(textarea); });
                 const sendBtn = document.createElement('button');
