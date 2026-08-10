@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <base target="_top">
     <title>มหิทธิดวง</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
@@ -2364,7 +2364,7 @@
                 </div>
 
                 <div id="ftRegisterError" class="hint-text hidden-element"></div>
-                <button class="btn btn-gold" id="ftSubmitExamBtn" style="width:100%; margin-top:5px; box-sizing:border-box;" onclick="submitFtExamBtnClick()">ส่งคำตอบ (รอแอดมินพิจารณา)</button>
+                <button class="btn btn-gold" id="ftSubmitExamBtn" style="width:100%; margin-top:5px; box-sizing:border-box;" onclick="submitFtExamBtnClick()">ส่งคำตอบ (รอพิจารณา)</button>
                 <div id="ftSubmitLoading" class="hidden-element" style="text-align:center; color:#00008B; margin-top:10px;">⏳ กำลังส่งข้อมูล...</div>
                 <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToFtAuthChoice()">⬅️ ย้อนกลับ</button>
             </div>
@@ -2491,7 +2491,7 @@
             <!-- ขั้นที่ 1: รายชื่อหมอดูที่ลูกดวงเคยตั้งคำถามไว้ -->
             <div id="askHistoryStepList">
                 <h2>💬 ถามดวง</h2>
-                <p style="margin-bottom:10px;">ประวัติการถามตอบกับหมอดูของท่าน (แยกตามหมอดูที่เคยถาม)</p>
+                <p style="margin-bottom:10px;">ประวัติการถามตอบกับหมอดู</p>
                 <div id="askDoctorHistoryList">
                     <p class="review-empty-text">กำลังโหลดประวัติ...</p>
                 </div>
@@ -3440,7 +3440,7 @@
             askHistoryFilter_ = 'all';
             askHistoryPage_ = 0;
             document.getElementById('askHistoryFilterSelect').value = 'all';
-            document.getElementById('askHistoryDetailFtName').innerText = '💬 คำถามที่เคยถาม: ' + (group.nickname || 'หมอดู');
+            document.getElementById('askHistoryDetailFtName').innerText = '💬 ประวัติคำถาม: ' + (group.nickname || 'หมอดู');
 
             document.getElementById('askHistoryStepList').classList.add('hidden-element');
             document.getElementById('askHistoryStepChat').classList.add('hidden-element');
@@ -3633,7 +3633,7 @@
                 const inputRow = document.createElement('div');
                 inputRow.className = 'ft-chat-input-row';
                 const textarea = document.createElement('textarea');
-                textarea.placeholder = 'พิมพ์ข้อความเพื่อสนทนาต่อกับหมอดู...';
+                textarea.placeholder = 'พิมพ์ข้อความ...';
                 textarea.rows = 1;
                 textarea.addEventListener('input', function() { autoResizeChatTextarea_(textarea); });
                 const sendBtn = document.createElement('button');
