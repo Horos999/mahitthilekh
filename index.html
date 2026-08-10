@@ -2303,7 +2303,7 @@
                 <label style="font-weight:bold;">เบอร์มือถือ</label>
                 <input type="tel" id="ftProfilePhone" class="text-input" maxlength="10" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
                 <label style="font-weight:bold;">ศาสตร์ที่ใช้</label>
-                <input type="text" id="ftProfileScience" class="text-input">
+                <textarea id="ftProfileScience" class="text-input" style="height:110px;"></textarea>
                 <label style="font-weight:bold;">แนะนำตนเอง</label>
                 <textarea id="ftProfileIntro" style="height:165px;"></textarea>
                 <label style="font-weight:bold;">ธนาคาร</label>
@@ -2400,7 +2400,7 @@
                 <input type="tel" id="ftFullPhone" class="text-input" maxlength="10" inputmode="numeric" placeholder="ตัวเลข 10 หลัก" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
 
                 <label style="font-weight:bold;">ศาสตร์ที่ใช้</label>
-                <input type="text" id="ftFullScience" class="text-input" placeholder="เช่น ไพ่ยิปซี, โหราศาสตร์ไทย">
+                <textarea id="ftFullScience" class="text-input" style="height:110px;" placeholder="เช่น ไพ่ยิปซี, โหราศาสตร์ไทย"></textarea>
 
                 <label style="font-weight:bold;">แนะนำตนเอง</label>
                 <textarea id="ftFullIntro" style="height:165px;" placeholder="แนะนำตัวให้ลูกดวงรู้จัก..."></textarea>
@@ -2821,15 +2821,11 @@
                 <label style="font-weight:bold;">อายุการใช้งาน (วัน) นับจากวันที่อนุมัติ</label>
                 <input type="number" id="fadEditValidityDays" class="text-input" min="1" step="1" placeholder="ค่าเริ่มต้น 60 วัน">
                 <div id="fadEditExpiryInfo" style="font-size:0.82rem; color:#666; margin:-6px 0 10px;"></div>
-                <label style="display:flex; align-items:center; gap:8px; font-weight:normal; cursor:pointer;">
-                    <input type="checkbox" id="fadEditRenewNow" style="width:auto;">
-                    🔄 ต่ออายุการใช้งานทันที (เริ่มนับอายุการใช้งานใหม่จากวันนี้)
-                </label>
 
                 <label style="font-weight:bold;">ศาสตร์ที่ใช้</label>
-                <input type="text" id="fadEditScience" class="text-input">
+                <textarea id="fadEditScience" class="text-input" style="height:110px;"></textarea>
                 <label style="font-weight:bold;">แนะนำตัว</label>
-                <textarea id="fadEditIntro" class="text-input" style="height:70px;"></textarea>
+                <textarea id="fadEditIntro" class="text-input" style="height:165px;"></textarea>
                 <label style="font-weight:bold;">ธนาคาร</label>
                 <input type="text" id="fadEditBankName" class="text-input">
                 <label style="font-weight:bold;">เลขบัญชี</label>
@@ -5869,12 +5865,11 @@
             document.getElementById('fadEditPassword').value = '';
             document.getElementById('fadEditStatus').value = ft.status || 'approved';
             document.getElementById('fadEditValidityDays').value = ft.validityDays || 60;
-            document.getElementById('fadEditRenewNow').checked = false;
             const expiryInfoEl = document.getElementById('fadEditExpiryInfo');
             if (ft.hasExpiry) {
                 expiryInfoEl.innerText = 'ปัจจุบันอนุมัติเมื่อ ' + (ft.approvedAt ? formatFtReviewDate_(ft.approvedAt) : '-') + ' หมดอายุวันที่ ' + (ft.expiresAt ? formatFtReviewDate_(ft.expiresAt, true) : '-');
             } else if (ft.status === 'approved') {
-                expiryInfoEl.innerText = 'บัญชีนี้ยังไม่มีการเริ่มนับอายุการใช้งาน (เป็นข้อมูลเก่าก่อนมีระบบนี้) ให้ติ๊ก "ต่ออายุการใช้งานทันที" ด้านล่าง เพื่อเริ่มนับอายุการใช้งานจากวันนี้';
+                expiryInfoEl.innerText = 'บัญชีนี้ยังไม่มีการเริ่มนับอายุการใช้งาน (เป็นข้อมูลเก่าก่อนมีระบบนี้)';
             } else {
                 expiryInfoEl.innerText = 'ยังไม่เคยได้รับการอนุมัติ อายุการใช้งานจะเริ่มนับอัตโนมัติเมื่อเปลี่ยนสถานะเป็น "อนุมัติแล้ว"';
             }
@@ -5935,8 +5930,7 @@
                 bankAcc: document.getElementById('fadEditBankAcc').value.trim(),
                 rules: document.getElementById('fadEditRules').value.trim(),
                 notes: document.getElementById('fadEditNotes').value.trim(),
-                validityDays: document.getElementById('fadEditValidityDays').value.trim(),
-                renewNow: document.getElementById('fadEditRenewNow').checked
+                validityDays: document.getElementById('fadEditValidityDays').value.trim()
             };
 
             const submitBtn = document.getElementById('fadEditSubmitBtn');
@@ -5966,10 +5960,9 @@
                         const filePayload = Object.assign({}, payload);
                         delete filePayload.idCardFile;
                         delete filePayload.bankBookFile;
-                        // validityDays/renewNow เป็นค่าฝั่งฟอร์ม (ดิบ) ไม่ใช่ค่าที่จะนำไปแสดงผลตรง ๆ
+                        // validityDays เป็นค่าฝั่งฟอร์ม (ดิบ) ไม่ใช่ค่าที่จะนำไปแสดงผลตรง ๆ
                         // ค่าอายุการใช้งานจริงหลังบันทึก จะได้จาก res (คำนวณจากเซิร์ฟเวอร์) ด้านล่างแทน
                         delete filePayload.validityDays;
-                        delete filePayload.renewNow;
                         Object.assign(ft, filePayload);
                         if (!payload.password) delete ft.password;
                         else ft.password = payload.password;
