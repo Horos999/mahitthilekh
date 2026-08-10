@@ -2938,6 +2938,57 @@
     </div>
 
     <script>
+        // ===================== เชื่อมต่อ Apps Script ผ่าน Web API (สำหรับหน้าเว็บที่ฝากบน GitHub Pages) =====================
+        // เดิมหน้านี้เรียก google.script.run ซึ่งใช้ได้เฉพาะตอนเปิดผ่านหน้าเว็บของ Apps Script เองเท่านั้น
+        // ตัวจำลองด้านล่างนี้ทำหน้าที่แทน google.script.run ของจริง โดยยิง fetch() ไปหา
+        // Apps Script Web App ที่ deploy แยกไว้เป็น API แทน ทำให้โค้ดเดิมทุกจุดที่เรียก
+        // google.script.run.withSuccessHandler(...).withFailureHandler(...).ชื่อฟังก์ชัน(args)
+        // ยังทำงานได้เหมือนเดิมทุกประการโดยไม่ต้องแก้โค้ดจุดอื่นเลย
+
+        // *** สำคัญ: แก้ URL ด้านล่างเป็น URL ที่ได้จากการ Deploy > New deployment > Web app ของคุณ ***
+        const GAS_API_URL = 'https://script.google.com/macros/s/แทนที่ด้วยรหัส_DEPLOYMENT_ID_ของคุณ/exec';
+
+        function makeScriptRunner_(successHandler, failureHandler) {
+            return new Proxy({}, {
+                get: function(target, prop) {
+                    if (prop === 'withSuccessHandler') {
+                        return function(fn) { return makeScriptRunner_(fn, failureHandler); };
+                    }
+                    if (prop === 'withFailureHandler') {
+                        return function(fn) { return makeScriptRunner_(successHandler, fn); };
+                    }
+                    // prop คือชื่อฟังก์ชันจริงที่ต้องการเรียกบนฝั่งเซิร์ฟเวอร์ (Code.gs)
+                    return function() {
+                        const args = Array.prototype.slice.call(arguments);
+                        fetch(GAS_API_URL, {
+                            method: 'POST',
+                            // ใช้ text/plain เพื่อเลี่ยงปัญหา CORS preflight ของ Apps Script
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: prop, params: args })
+                        })
+                        .then(function(res) { return res.json(); })
+                        .then(function(data) {
+                            if (data && data.__apiError) {
+                                if (failureHandler) failureHandler({ message: data.__apiError });
+                            } else {
+                                if (successHandler) successHandler(data);
+                            }
+                        })
+                        .catch(function(err) {
+                            if (failureHandler) failureHandler(err);
+                        });
+                    };
+                }
+            });
+        }
+
+        window.google = {
+            script: {
+                run: makeScriptRunner_(null, null)
+            }
+        };
+        // ===================== จบส่วนเชื่อมต่อ API =====================
+
         // ตรวจสอบ Parameter เมื่อเปิดหน้าเว็บ (เพื่อดูว่าหมอดูคลิกลิงก์มาจากอีเมลหรือไม่)
         window.onload = function() {
             if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.ft_reg_token) {
