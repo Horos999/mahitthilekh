@@ -989,6 +989,53 @@
             margin: 8px 0 14px;
         }
 
+        /* สถานะการทำงานของหมอดู (ทำงานปกติ / ลากิจ) วางอยู่ใต้ชื่อหมอดู เหนือปุ่ม "ตอบดวง" (ฝั่งหมอดู) และ "ดูดวง" (ฝั่งลูกดวง) */
+        .ft-status-row {
+            display: flex;
+            justify-content: center;
+            margin: 4px 0 10px;
+        }
+        .ft-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 16px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: bold;
+            font-family: 'Sarabun', sans-serif;
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            background: #eee;
+            color: #555;
+        }
+        button.ft-status-badge {
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        button.ft-status-badge:hover { opacity: 0.9; transform: translateY(-1px); }
+        button.ft-status-badge:active { transform: translateY(1px); }
+        button.ft-status-badge:disabled { cursor: not-allowed; opacity: 0.7; transform: none; }
+        .ft-status-badge.ft-status-normal {
+            background: #e6f7ec;
+            color: #1e7e34;
+        }
+        .ft-status-badge.ft-status-on-leave {
+            background: #fdeceb;
+            color: #c0392b;
+        }
+
+        /* ปุ่ม "ดูดวง" เมื่อหมอดูอยู่ในสถานะลากิจ ให้เป็นสีเทาและกดไม่ได้ */
+        #ftDetailAskBtn.ft-ask-btn-disabled {
+            background: #ccc !important;
+            color: #777 !important;
+            cursor: not-allowed !important;
+            box-shadow: none !important;
+        }
+        #ftDetailAskBtn.ft-ask-btn-disabled:hover {
+            transform: none !important;
+        }
+
         /* สไตล์สำหรับหน้ารายละเอียดหมอดู (Modal) */
         .ft-detail-photo {
             width: 140px;
@@ -2162,6 +2209,13 @@
                 <!-- ชื่อหมอดู -->
                 <h2 id="ftHomeNickname" class="ft-profile-name" style="text-align:center;"></h2>
 
+                <!-- สถานะการทำงานของหมอดู (คลิกที่ป้ายนี้เพื่อสลับสถานะ ทำงานปกติ <-> ลากิจ) -->
+                <div class="ft-status-row">
+                    <button type="button" id="ftHomeStatusBtn" class="ft-status-badge" onclick="toggleFtOnLeaveStatus()" aria-label="สลับสถานะการทำงาน" title="คลิกเพื่อสลับสถานะการทำงาน">
+                        สถานะ : <span id="ftHomeStatusText">ทำงานปกติ</span>
+                    </button>
+                </div>
+
                 <!-- แจ้งเตือนเมื่อบัญชีใกล้หมดอายุการใช้งาน (เหลือ <= 3 วัน) -->
                 <div id="ftExpiryWarningBanner" class="ft-expiry-warning-banner hidden-element">
                     <p id="ftExpiryWarningText"></p>
@@ -2449,8 +2503,13 @@
             <img id="ftDetailPhoto" class="ft-detail-photo ft-photo-square" alt="รูปหมอดู">
             <h2 id="ftDetailNickname" class="ft-profile-name" style="text-align:center;"></h2>
 
+            <!-- สถานะการทำงานของหมอดู (แสดงให้ลูกดวงทราบก่อนกดดูดวง หากลากิจปุ่ม "ดูดวง" จะเป็นสีเทาและกดไม่ได้) -->
+            <div class="ft-status-row">
+                <span id="ftDetailStatusBadge" class="ft-status-badge ft-status-normal">สถานะ : ทำงานปกติ</span>
+            </div>
+
             <div class="ft-profile-btn-row">
-                <button class="btn btn-gold" onclick="openFtAskFlow()">🔮 ดูดวง</button>
+                <button class="btn btn-gold" id="ftDetailAskBtn" onclick="openFtAskFlow()">🔮 ดูดวง</button>
             </div>
 
             <p class="ft-section-label">✨ ศาสตร์ที่ใช้</p>
@@ -3334,8 +3393,22 @@
             document.getElementById('ftDetailScience').innerText = ft.science || '-';
             document.getElementById('ftDetailIntro').innerText = ft.intro || '-';
             renderFtScienceTags_(ft.science || '', 'ftDetailScienceTags', 'ftDetailScience');
+            renderFtDetailStatus_(ft);
             loadFtReviews(ft.id, 'ftDetailReviewsList', 'ftDetailRatingOverview', 'ftDetailQaCount', 'ftDetailReviewsPager');
             document.getElementById('ftDetailModal').style.display = 'flex';
+        }
+
+        // วาดป้ายสถานะการทำงานของหมอดูในหน้ารายละเอียด (ฝั่งลูกดวง) หากลากิจ ให้ปุ่ม "ดูดวง" เป็นสีเทาและกดไม่ได้
+        function renderFtDetailStatus_(ft) {
+            const badge = document.getElementById('ftDetailStatusBadge');
+            const askBtn = document.getElementById('ftDetailAskBtn');
+            if (!badge || !askBtn) return;
+            const onLeave = !!ft.onLeave;
+            badge.innerText = 'สถานะ : ' + (onLeave ? 'ลากิจ' : 'ทำงานปกติ');
+            badge.classList.toggle('ft-status-on-leave', onLeave);
+            badge.classList.toggle('ft-status-normal', !onLeave);
+            askBtn.disabled = onLeave;
+            askBtn.classList.toggle('ft-ask-btn-disabled', onLeave);
         }
 
         function closeFtDetailModal() {
@@ -4036,6 +4109,10 @@
 
         function openFtAskFlow() {
             if (!currentDetailFt) return;
+            if (currentDetailFt.onLeave) {
+                alert('หมอดูท่านนี้อยู่ในสถานะลากิจ ขณะนี้ไม่สามารถขอดูดวงได้');
+                return;
+            }
             closeFtDetailModal();
 
             document.getElementById('ftAskPackageFtName').innerText = 'หมอดู: ' + (currentDetailFt.nickname || '');
@@ -4876,6 +4953,7 @@
             document.getElementById('ftHomeIntro').innerText = profile.intro || '';
             renderFtScienceTags_(profile.science || '', 'ftHomeScienceTags', 'ftHomeScience');
             renderFtExpiryWarning_(profile);
+            renderFtHomeStatus_();
 
             document.getElementById('ft-home').classList.remove('hidden-element');
             document.getElementById('ftHomeHeaderActions').classList.remove('hidden-element');
@@ -4884,6 +4962,49 @@
             loadFtReviews(profile.id, 'ftHomeReviewsList', 'ftHomeRatingOverview', 'ftHomeQaCount', 'ftHomeReviewsPager');
             refreshFtAnswerBadge();
             startFtAnswerBadgePolling_();
+        }
+
+        // วาดป้ายสถานะการทำงาน (ทำงานปกติ / ลากิจ) ของหมอดูในหน้าแรกของหมอดูเอง ตามค่า currentFtProfile.onLeave ล่าสุด
+        function renderFtHomeStatus_() {
+            const btn = document.getElementById('ftHomeStatusBtn');
+            const textEl = document.getElementById('ftHomeStatusText');
+            if (!btn || !textEl || !currentFtProfile) return;
+            const onLeave = !!currentFtProfile.onLeave;
+            textEl.innerText = onLeave ? 'ลากิจ' : 'ทำงานปกติ';
+            btn.classList.toggle('ft-status-on-leave', onLeave);
+            btn.classList.toggle('ft-status-normal', !onLeave);
+        }
+
+        // หมอดูคลิกป้ายสถานะเพื่อสลับสถานะทำงานปกติ <-> ลากิจ แล้วบันทึกไปยังเซิร์ฟเวอร์
+        function toggleFtOnLeaveStatus() {
+            if (!currentFtProfile) return;
+            const newOnLeave = !currentFtProfile.onLeave;
+            const btn = document.getElementById('ftHomeStatusBtn');
+            if (btn) btn.disabled = true;
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (btn) btn.disabled = false;
+                    if (res && res.success) {
+                        currentFtProfile.onLeave = (typeof res.onLeave === 'boolean') ? res.onLeave : newOnLeave;
+                        const raw = localStorage.getItem(FT_SESSION_KEY);
+                        try {
+                            const session = raw ? JSON.parse(raw) : null;
+                            if (session) {
+                                session.onLeave = currentFtProfile.onLeave;
+                                localStorage.setItem(FT_SESSION_KEY, JSON.stringify(session));
+                            }
+                        } catch (e) {}
+                        renderFtHomeStatus_();
+                    } else {
+                        alert('⚠️ ' + (res ? res.error : 'ไม่สามารถเปลี่ยนสถานะได้ในขณะนี้'));
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    if (btn) btn.disabled = false;
+                    alert('⚠️ Error: ' + err.message);
+                })
+                .setFtOnLeaveStatus(currentFtProfile.id, newOnLeave);
         }
 
         // เช็คคำถามใหม่จากลูกดวงเป็นระยะ ๆ ขณะอยู่ในหน้าแรกของหมอดู เพื่อให้ตัวเลขแจ้งเตือนที่ปุ่ม "ตอบดวง" เป็นปัจจุบันเสมอ
