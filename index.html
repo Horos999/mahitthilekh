@@ -2989,7 +2989,7 @@
             <h2 id="rulesModalTitle">📜 กฎกติกาและเงื่อนไขการใช้บริการ</h2>
             <div id="rulesModalBody" class="rules-modal-body"></div>
             <div class="action-area">
-                <button class="btn" style="background:#ccc; color:#333;" onclick="closeRulesModal()">ปิด</button>
+                <button class="btn" id="rulesModalCloseBtn" style="background:#ccc; color:#333;" onclick="closeRulesModal()">ปิด</button>
             </div>
         </div>
     </div>
@@ -3047,9 +3047,23 @@
         // ===================== จบส่วนเชื่อมต่อ API =====================
 
         // ตรวจสอบ Parameter เมื่อเปิดหน้าเว็บ (เพื่อดูว่าหมอดูคลิกลิงก์มาจากอีเมลหรือไม่)
+        // อ่านจาก URL โดยตรงด้วย URLSearchParams เนื่องจากหน้านี้ฝากไว้บน GitHub Pages (หน้าเว็บ static)
+        // จึงไม่มี APP_PARAMS ที่ฝั่งเซิร์ฟเวอร์ของ Apps Script ฝังมาให้เหมือนตอนเปิดผ่านหน้าเว็บของ Apps Script เอง
+        // (คงเช็ค APP_PARAMS ไว้เผื่อกรณีเปิดผ่านหน้าเว็บของ Apps Script โดยตรงด้วยเพื่อความเข้ากันได้)
         window.onload = function() {
+            let ftRegToken = null;
             if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.ft_reg_token) {
-                handleFtRegistrationLink(APP_PARAMS.ft_reg_token);
+                ftRegToken = APP_PARAMS.ft_reg_token;
+            } else {
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('ft_reg_token')) {
+                        ftRegToken = urlParams.get('ft_reg_token');
+                    }
+                } catch (e) { /* เบราว์เซอร์เก่าที่ไม่รองรับ URLSearchParams */ }
+            }
+            if (ftRegToken) {
+                handleFtRegistrationLink(ftRegToken);
             }
         };
 
@@ -5158,6 +5172,8 @@
                         document.getElementById('ftFullPhotoPreview').src = '';
                         document.getElementById('ftFullPhotoPreview').classList.add('hidden-element');
                         document.getElementById('ft-full-register-form').classList.remove('hidden-element');
+                        // แสดงกฎกติกาสำหรับหมอดูก่อน ให้กดปุ่ม "รับทราบ" เพื่อปิด แล้วจึงเริ่มกรอกแบบฟอร์มที่แสดงอยู่ด้านหลัง
+                        openRulesModal('ft', 'รับทราบ');
                     } else {
                         alert(res.error || "ลิงก์ไม่ถูกต้อง");
                         document.getElementById('ft-auth-choice').classList.remove('hidden-element');
@@ -5700,7 +5716,7 @@
                 '<li>หากพบการกระทำผิดกฎ แพลตฟอร์มมีสิทธิ์ระงับบัญชีผู้ใช้งานของลูกดวงได้โดยไม่ต้องแจ้งล่วงหน้า</li>' +
             '</ul>';
 
-        function openRulesModal(side) {
+        function openRulesModal(side, closeLabel) {
             const titleEl = document.getElementById('rulesModalTitle');
             const bodyEl = document.getElementById('rulesModalBody');
             if (side === 'ft') {
@@ -5710,6 +5726,7 @@
                 titleEl.innerText = '📜 กฎกติกาและเงื่อนไขการใช้บริการสำหรับ "ลูกดวง"';
                 bodyEl.innerHTML = CLIENT_RULES_HTML;
             }
+            document.getElementById('rulesModalCloseBtn').innerText = closeLabel || 'ปิด';
             document.getElementById('rulesModal').style.display = 'flex';
         }
 
