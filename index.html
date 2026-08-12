@@ -1995,9 +1995,66 @@
             object-fit: cover;
         }
 
+        /* ===================== Global Loading Overlay ===================== *
+         * แสดงทับหน้าจอทั้งหมดทุกครั้งที่มีการเรียกข้อมูล/ส่งข้อมูลไปเซิร์ฟเวอร์ (google.script.run)
+         * เพื่อ (1) ให้ผู้ใช้เห็นว่าระบบกำลังทำงานอยู่ ไม่ได้ค้าง และ (2) กันไม่ให้กดปุ่มซ้ำจนข้อมูลถูกส่งซ้ำซ้อน
+         * ระหว่างที่กำลังรอผลลัพธ์อยู่ (ไม่นับการรีเฟรชเบื้องหลังแบบเงียบ เช่น ตัวเลขแจ้งเตือนที่อัปเดตทุก 30 วิ) */
+        #globalLoadingOverlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 20, 0.55);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        #globalLoadingOverlay.global-loading-visible {
+            display: flex;
+        }
+        .global-loading-box {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 26px 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+            max-width: 80%;
+            box-sizing: border-box;
+        }
+        .global-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: globalLoadingSpin 0.8s linear infinite;
+            margin-bottom: 14px;
+        }
+        @keyframes globalLoadingSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #globalLoadingText {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            text-align: center;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
+
+    <!-- ป๊อปอัพ "กำลังโหลด/กำลังบันทึก/กำลังส่งข้อมูล ฯลฯ" ใช้ร่วมกันทุกปุ่มทั้งเว็บ ควบคุมด้วย showGlobalLoading_()/hideGlobalLoading_() -->
+    <div id="globalLoadingOverlay" aria-live="polite">
+        <div class="global-loading-box">
+            <div class="global-loading-spinner"></div>
+            <div id="globalLoadingText">กำลังดำเนินการ... กรุณารอสักครู่</div>
+        </div>
+    </div>
 
     <header>
         <div id="headerContactRow" class="header-contact-row">
@@ -3013,53 +3070,123 @@
         // *** สำคัญ: แก้ URL ด้านล่างเป็น URL ที่ได้จากการ Deploy > New deployment > Web app ของคุณ ***
         const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbziPWjKj6bgPcQ26vj9JdbuR9_4ZENOFjv_DjSZHMCp44CPAUF0hUOc45A3WcLkZLJwMQ/exec';
 
-        function makeScriptRunner_(successHandler, failureHandler) {
+        // ----------------- ตัวช่วยแสดง/ซ่อนหน้าจอ "กำลังโหลด..." แบบครอบทั้งจอ -----------------
+        // ใช้ตัวนับ (ไม่ใช่ true/false เฉย ๆ) เผื่อกรณีมีการเรียกซ้อนกันมากกว่า 1 คำขอพร้อมกัน
+        // จะได้ไม่ซ่อนหน้าจอโหลดไปก่อนที่อีกคำขอหนึ่งจะเสร็จ
+        let __globalLoadingCount_ = 0;
+        function showGlobalLoading_(message) {
+            __globalLoadingCount_++;
+            const overlay = document.getElementById('globalLoadingOverlay');
+            const textEl = document.getElementById('globalLoadingText');
+            if (textEl) textEl.innerText = message || 'กำลังดำเนินการ... กรุณารอสักครู่';
+            if (overlay) overlay.classList.add('global-loading-visible');
+        }
+        function hideGlobalLoading_() {
+            __globalLoadingCount_ = Math.max(0, __globalLoadingCount_ - 1);
+            if (__globalLoadingCount_ === 0) {
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) overlay.classList.remove('global-loading-visible');
+            }
+        }
+
+        // เลือกข้อความ "กำลัง...." ให้เหมาะกับชนิดของคำสั่งที่กำลังเรียก โดยดูจากชื่อฟังก์ชันฝั่งเซิร์ฟเวอร์ (Code.gs)
+        // เพื่อให้ทุกปุ่มในระบบมีข้อความแจ้งสถานะที่เข้าใจง่าย แทนการนิ่งเฉย ๆ เวลากด
+        function getLoadingMessage_(actionName) {
+            const name = String(actionName || '').toLowerCase();
+            if (name.indexOf('login') !== -1) return 'กำลังเข้าสู่ระบบ... กรุณารอสักครู่';
+            if (name.indexOf('validate') !== -1) return 'กำลังตรวจสอบข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('forgot') !== -1) return 'กำลังส่งอีเมล... กรุณารอสักครู่';
+            if (name.indexOf('blocked') !== -1) return 'กำลังบันทึกข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('register') !== -1 || name.indexOf('submit') !== -1) return 'กำลังส่งข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('update') !== -1) return 'กำลังบันทึกข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('send') !== -1 || name.indexOf('notify') !== -1) return 'กำลังส่งข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('delete') !== -1 || name.indexOf('remove') !== -1) return 'กำลังลบข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('mark') !== -1) return 'กำลังอัปเดตข้อมูล... กรุณารอสักครู่';
+            if (name.indexOf('respond') !== -1 || name.indexOf('request') !== -1) return 'กำลังดำเนินการ... กรุณารอสักครู่';
+            if (name.indexOf('get') !== -1 || name.indexOf('list') !== -1 || name.indexOf('fetch') !== -1) return 'กำลังโหลดข้อมูล... กรุณารอสักครู่';
+            return 'กำลังดำเนินการ... กรุณารอสักครู่';
+        }
+
+        function makeScriptRunner_(successHandler, failureHandler, isSilent) {
             return new Proxy({}, {
                 get: function(target, prop) {
                     if (prop === 'withSuccessHandler') {
-                        return function(fn) { return makeScriptRunner_(fn, failureHandler); };
+                        return function(fn) { return makeScriptRunner_(fn, failureHandler, isSilent); };
                     }
                     if (prop === 'withFailureHandler') {
-                        return function(fn) { return makeScriptRunner_(successHandler, fn); };
+                        return function(fn) { return makeScriptRunner_(successHandler, fn, isSilent); };
                     }
                     // prop คือชื่อฟังก์ชันจริงที่ต้องการเรียกบนฝั่งเซิร์ฟเวอร์ (Code.gs)
                     return function() {
                         const args = Array.prototype.slice.call(arguments);
-                        fetch(GAS_API_URL, {
-                            method: 'POST',
-                            // ใช้ text/plain เพื่อเลี่ยงปัญหา CORS preflight ของ Apps Script
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify({ action: prop, params: args })
-                        })
-                        .then(function(res) {
-                            // อ่านค่าที่ตอบกลับมาเป็นข้อความก่อนเสมอ แล้วค่อยลองแปลงเป็น JSON เอง
-                            // (แทนที่จะเรียก res.json() ตรง ๆ) เพราะบางครั้ง Apps Script Web App
-                            // จะตอบกลับมาเป็นหน้า HTML แทน JSON เช่น กรณีตั้งค่า Deploy ไม่ถูกต้อง
-                            // ("Who has access" ไม่ได้ตั้งเป็น Anyone) หรือยังไม่ได้ Deploy โค้ดเวอร์ชันล่าสุด
-                            // ทำให้ res.json() โยน error "Unexpected token '<' ... is not valid JSON"
-                            // ซึ่งเป็นข้อความที่ผู้ใช้งานทั่วไปอ่านไม่เข้าใจ จึงดักจับไว้แล้วแปลงเป็น
-                            // ข้อความแจ้งเตือนภาษาไทยที่เข้าใจง่ายขึ้นแทน
-                            return res.text().then(function(rawText) {
-                                let data;
-                                try {
-                                    data = JSON.parse(rawText);
-                                } catch (parseErr) {
-                                    console.error('API ไม่ได้ตอบกลับเป็น JSON (สถานะ HTTP ' + res.status + '):', rawText.slice(0, 500));
-                                    throw new Error('เชื่อมต่อระบบเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หากยังพบปัญหาซ้ำ กรุณาแจ้งผู้ดูแลระบบ (รหัสข้อผิดพลาด: NON_JSON_RESPONSE)');
+                        const actionName = prop;
+                        // ลองยิงจริง 1 ครั้ง + หากเจอปัญหาเชื่อมต่อ/เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง ให้ลองซ้ำอัตโนมัติอีกสูงสุด 2 ครั้ง
+                        // ก่อนจะแจ้งผู้ใช้ว่าผิดพลาดจริง ๆ เพราะเคสส่วนใหญ่ของ NON_JSON_RESPONSE เกิดจากปัญหาชั่วคราว
+                        // (เช่น เซิร์ฟเวอร์เพิ่งตื่นจาก Cold Start / อินเทอร์เน็ตสะดุดชั่วขณะ) ไม่ใช่ปัญหาที่ต้องให้ผู้ใช้กดปุ่มซ้ำเอง
+                        const RETRY_DELAYS_MS = [1200, 2200];
+
+                        if (!isSilent) showGlobalLoading_(getLoadingMessage_(actionName));
+
+                        function attempt(attemptIndex) {
+                            return fetch(GAS_API_URL, {
+                                method: 'POST',
+                                // ใช้ text/plain เพื่อเลี่ยงปัญหา CORS preflight ของ Apps Script
+                                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                                body: JSON.stringify({ action: actionName, params: args })
+                            })
+                            .then(function(res) {
+                                // อ่านค่าที่ตอบกลับมาเป็นข้อความก่อนเสมอ แล้วค่อยลองแปลงเป็น JSON เอง
+                                // (แทนที่จะเรียก res.json() ตรง ๆ) เพราะบางครั้ง Apps Script Web App
+                                // จะตอบกลับมาเป็นหน้า HTML แทน JSON เช่น กรณีตั้งค่า Deploy ไม่ถูกต้อง
+                                // ("Who has access" ไม่ได้ตั้งเป็น Anyone) หรือยังไม่ได้ Deploy โค้ดเวอร์ชันล่าสุด
+                                // ทำให้ res.json() โยน error "Unexpected token '<' ... is not valid JSON"
+                                // ซึ่งเป็นข้อความที่ผู้ใช้งานทั่วไปอ่านไม่เข้าใจ จึงดักจับไว้แล้วแปลงเป็น
+                                // ข้อความแจ้งเตือนภาษาไทยที่เข้าใจง่ายขึ้นแทน
+                                return res.text().then(function(rawText) {
+                                    let data;
+                                    try {
+                                        data = JSON.parse(rawText);
+                                    } catch (parseErr) {
+                                        console.error('API ไม่ได้ตอบกลับเป็น JSON (สถานะ HTTP ' + res.status + ', รอบที่ ' + (attemptIndex + 1) + '):', rawText.slice(0, 500));
+                                        const nonJsonErr = new Error('NON_JSON_RESPONSE');
+                                        nonJsonErr.isRetryable_ = true;
+                                        throw nonJsonErr;
+                                    }
+                                    return data;
+                                });
+                            })
+                            .catch(function(err) {
+                                // เข้าเงื่อนไขลองซ้ำอัตโนมัติเฉพาะ (1) เจอปัญหาการเชื่อมต่อเครือข่ายจริง ๆ (ยังไม่ทันได้รับคำตอบจากเซิร์ฟเวอร์เลย)
+                                // หรือ (2) เซิร์ฟเวอร์ตอบกลับมาแต่ไม่ใช่ JSON ที่ถูกต้อง และยังลองซ้ำได้ไม่เกินจำนวนที่กำหนด
+                                const canRetry = (err instanceof TypeError || (err && err.isRetryable_)) && attemptIndex < RETRY_DELAYS_MS.length;
+                                if (canRetry) {
+                                    return new Promise(function(resolve) {
+                                        setTimeout(resolve, RETRY_DELAYS_MS[attemptIndex]);
+                                    }).then(function() {
+                                        return attempt(attemptIndex + 1);
+                                    });
                                 }
-                                return data;
+                                throw err;
                             });
-                        })
-                        .then(function(data) {
-                            if (data && data.__apiError) {
-                                if (failureHandler) failureHandler({ message: data.__apiError });
-                            } else {
-                                if (successHandler) successHandler(data);
-                            }
-                        })
-                        .catch(function(err) {
-                            if (failureHandler) failureHandler(err);
-                        });
+                        }
+
+                        attempt(0)
+                            .then(function(data) {
+                                if (!isSilent) hideGlobalLoading_();
+                                if (data && data.__apiError) {
+                                    if (failureHandler) failureHandler({ message: data.__apiError });
+                                } else {
+                                    if (successHandler) successHandler(data);
+                                }
+                            })
+                            .catch(function(err) {
+                                if (!isSilent) hideGlobalLoading_();
+                                let finalErr = err;
+                                if (err && err.message === 'NON_JSON_RESPONSE') {
+                                    finalErr = new Error('เชื่อมต่อระบบเซิร์ฟเวอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หากยังพบปัญหาซ้ำ กรุณาแจ้งผู้ดูแลระบบ (รหัสข้อผิดพลาด: NON_JSON_RESPONSE)');
+                                }
+                                if (failureHandler) failureHandler(finalErr);
+                            });
                     };
                 }
             });
@@ -3067,9 +3194,15 @@
 
         window.google = {
             script: {
-                run: makeScriptRunner_(null, null)
+                run: makeScriptRunner_(null, null, false)
             }
         };
+
+        // รันเนอร์แบบ "เงียบ" สำหรับการรีเฟรชข้อมูลเบื้องหลังอัตโนมัติเท่านั้น (เช่น ตัวเลขแจ้งเตือนที่อัปเดตทุก 30 วิ)
+        // ไม่แสดงหน้าจอ "กำลังโหลด..." ครอบทั้งจอ เพื่อไม่ให้จอกระพริบ/บล็อกการใช้งานระหว่างที่ผู้ใช้ทำอย่างอื่นอยู่
+        function silentScriptRunner_() {
+            return makeScriptRunner_(null, null, true);
+        }
         // ===================== จบส่วนเชื่อมต่อ API =====================
 
         // ตรวจสอบ Parameter เมื่อเปิดหน้าเว็บ (เพื่อดูว่าหมอดูคลิกลิงก์มาจากอีเมลหรือไม่)
@@ -4127,7 +4260,7 @@
         // ดึงเฉพาะตัวเลขแจ้งเตือนมาแสดงที่ปุ่ม "ถามดวง" โดยไม่ต้องเปิด Modal (เรียกตอนเข้าหน้าแรกของลูกดวง/รีเฟรชเป็นระยะ)
         function refreshClientAskBadge() {
             if (!currentClientProfile) return;
-            google.script.run
+            silentScriptRunner_()
                 .withSuccessHandler(function(res) {
                     const list = (res && res.success && res.list) ? res.list : [];
                     const count = list.filter(function(r) { return !r.isReadByClient; }).length;
@@ -4666,7 +4799,7 @@
         // ดึงเฉพาะตัวเลขแจ้งเตือนมาแสดงที่ปุ่ม "ตอบดวง" โดยไม่ต้องเปิด Modal (เรียกตอนเข้าหน้าแรกของหมอดู/รีเฟรชเป็นระยะ)
         function refreshFtAnswerBadge() {
             if (!currentFtProfile) return;
-            google.script.run
+            silentScriptRunner_()
                 .withSuccessHandler(function(res) {
                     const list = (res && res.success && res.list) ? res.list : [];
                     const count = list.filter(function(r) { return !r.isReadByFt; }).length;
