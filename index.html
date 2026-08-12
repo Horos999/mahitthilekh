@@ -2171,7 +2171,10 @@
 
     <!-- ===================== ทางเข้าหมอดู (Fortune Teller) ===================== -->
     <div id="fortuneteller-blank-page" class="container-box hidden-element">
-        
+        <div id="ft-checking-session" class="hidden-element">
+            <p style="color:#777;">กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</p>
+        </div>
+
         <!-- ตัวเลือก เข้าสู่ระบบ / สมัครสมาชิก หมอดู -->
         <div id="ft-auth-choice" class="hidden-element">
             <h2>🧙‍♂️ ทางเข้าหมอดู</h2>
@@ -4949,7 +4952,7 @@
         let currentFtProfile = null;
 
         function resetFtSubViews() {
-            ['ft-auth-choice', 'ft-login-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
+            ['ft-checking-session', 'ft-auth-choice', 'ft-login-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
                 document.getElementById(id).classList.add('hidden-element');
             });
         }
@@ -5062,6 +5065,7 @@
                 return;
             }
 
+            document.getElementById('ft-checking-session').classList.remove('hidden-element');
             google.script.run
                 .withSuccessHandler(function(res) {
                     if (res && res.success) {
