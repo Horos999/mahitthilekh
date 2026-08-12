@@ -4972,6 +4972,7 @@
         }
 
         function showFtHome(profile) {
+            resetFtSubViews();
             currentFtProfile = profile;
             document.getElementById('ftHomeNickname').innerText = profile.nickname || '';
 
