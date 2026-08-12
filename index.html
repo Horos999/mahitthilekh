@@ -2175,6 +2175,11 @@
             <p style="color:#777;">กำลังตรวจสอบสถานะการเข้าสู่ระบบ...</p>
         </div>
 
+        <!-- แสดงระหว่างตรวจสอบลิงก์ลงทะเบียนที่หมอดูคลิกมาจากอีเมล (หลังสอบผ่าน) -->
+        <div id="ft-checking-reg-link" class="hidden-element">
+            <p style="color:#777;">กำลังตรวจสอบลิงก์และโหลดข้อมูลการสมัคร...</p>
+        </div>
+
         <!-- ตัวเลือก เข้าสู่ระบบ / สมัครสมาชิก หมอดู -->
         <div id="ft-auth-choice" class="hidden-element">
             <h2>🧙‍♂️ ทางเข้าหมอดู</h2>
@@ -4952,7 +4957,7 @@
         let currentFtProfile = null;
 
         function resetFtSubViews() {
-            ['ft-checking-session', 'ft-auth-choice', 'ft-login-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
+            ['ft-checking-session', 'ft-checking-reg-link', 'ft-auth-choice', 'ft-login-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
                 document.getElementById(id).classList.add('hidden-element');
             });
         }
@@ -5185,9 +5190,11 @@
             document.getElementById('live-entry-page').classList.add('hidden-element');
             document.getElementById('fortuneteller-blank-page').classList.remove('hidden-element');
             resetFtSubViews();
+            document.getElementById('ft-checking-reg-link').classList.remove('hidden-element');
 
             google.script.run
                 .withSuccessHandler(function(res) {
+                    resetFtSubViews();
                     if (res && res.success) {
                         document.getElementById('ftTokenVal').value = token;
                         document.getElementById('ftFullNickname').value = res.nickname;
@@ -5201,6 +5208,11 @@
                         alert(res.error || "ลิงก์ไม่ถูกต้อง");
                         document.getElementById('ft-auth-choice').classList.remove('hidden-element');
                     }
+                })
+                .withFailureHandler(function(err) {
+                    resetFtSubViews();
+                    alert('⚠️ ไม่สามารถโหลดข้อมูลการสมัครได้ กรุณาลองเปิดลิงก์อีกครั้ง หรือแจ้งผู้ดูแลระบบ (' + err.message + ')');
+                    document.getElementById('ft-auth-choice').classList.remove('hidden-element');
                 })
                 .getFtRegistrationData(token);
         }
