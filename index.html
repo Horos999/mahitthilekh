@@ -2273,6 +2273,39 @@
                     <button type="button" id="loginFtPasswordToggleBtn" class="password-toggle-btn" onclick="togglePasswordVisibility('loginFtPassword','loginFtPasswordToggleBtn')">👁️</button>
                 </div>
                 <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitFtLogin()">เข้าสู่ระบบ</button>
+                <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:none; color:var(--primary-color); text-decoration:underline; box-shadow:none;" onclick="showFtForgotPassword()">ลืมรหัสผ่าน?</button>
+                <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToFtAuthChoice()">⬅️ ย้อนกลับ</button>
+            </div>
+        </div>
+
+        <!-- หน้าลืมรหัสผ่าน หมอดู (ยืนยันตัวตนด้วยอีเมล + เบอร์โทรศัพท์ + เลขบัญชีธนาคารที่ลงทะเบียนไว้ แทนเลขท้ายบัตรประชาชนแบบฝั่งลูกดวง) -->
+        <div id="ft-forgot-password-form" class="hidden-element">
+            <div class="input-group" style="text-align:left;">
+                <h2 style="text-align:center; margin-top:0;">🔓 ลืมรหัสผ่าน</h2>
+                <p style="font-size:0.85rem; color:#777;">กรอกข้อมูลให้ตรงกับตอนสมัครสมาชิก ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปยังอีเมลของท่านทันที</p>
+                <label style="font-weight:bold;">อีเมล</label>
+                <input type="email" id="forgotFtEmail" class="text-input" placeholder="email@example.com">
+                <label style="font-weight:bold;">เบอร์โทรศัพท์</label>
+                <input type="tel" id="forgotFtPhone" class="text-input" maxlength="10" inputmode="numeric" placeholder="เช่น 0812345678" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
+                <label style="font-weight:bold;">เลขบัญชีธนาคารที่ลงทะเบียนไว้</label>
+                <input type="text" id="forgotFtBankAcc" class="text-input" inputmode="numeric" placeholder="เลขบัญชีธนาคาร" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitFtForgotPassword()">ส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมล</button>
+                <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToFtLoginFromForgot()">⬅️ ย้อนกลับ</button>
+            </div>
+        </div>
+
+        <!-- หน้าตั้งรหัสผ่านใหม่ หมอดู (เปิดจากลิงก์ในอีเมล) -->
+        <div id="ft-reset-password-form" class="hidden-element">
+            <div class="input-group" style="text-align:left;">
+                <h2 style="text-align:center; margin-top:0;">🔑 ตั้งรหัสผ่านใหม่</h2>
+                <p style="font-size:0.85rem; color:#777;">กรุณาตั้งรหัสผ่านใหม่สำหรับบัญชีของท่าน</p>
+                <input type="hidden" id="ftResetTokenVal">
+                <label style="font-weight:bold;">รหัสผ่านใหม่</label>
+                <input type="password" id="ftResetNewPassword" class="text-input" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="off">
+                <label style="font-weight:bold;">ยืนยันรหัสผ่านใหม่</label>
+                <input type="password" id="ftResetConfirmPassword" class="text-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" autocomplete="off">
+                <div id="ftResetPasswordError" class="hint-text hidden-element"></div>
+                <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitFtResetPassword()">บันทึกรหัสผ่านใหม่</button>
                 <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToFtAuthChoice()">⬅️ ย้อนกลับ</button>
             </div>
         </div>
@@ -3248,13 +3281,17 @@
         window.onload = function() {
             let ftRegToken = null;
             let clientResetToken = null;
+            let ftResetToken = null;
             if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.ft_reg_token) {
                 ftRegToken = APP_PARAMS.ft_reg_token;
             }
             if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.client_reset_token) {
                 clientResetToken = APP_PARAMS.client_reset_token;
             }
-            if (!ftRegToken || !clientResetToken) {
+            if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.ft_reset_token) {
+                ftResetToken = APP_PARAMS.ft_reset_token;
+            }
+            if (!ftRegToken || !clientResetToken || !ftResetToken) {
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
                     if (!ftRegToken && urlParams.get('ft_reg_token')) {
@@ -3263,12 +3300,17 @@
                     if (!clientResetToken && urlParams.get('client_reset_token')) {
                         clientResetToken = urlParams.get('client_reset_token');
                     }
+                    if (!ftResetToken && urlParams.get('ft_reset_token')) {
+                        ftResetToken = urlParams.get('ft_reset_token');
+                    }
                 } catch (e) { /* เบราว์เซอร์เก่าที่ไม่รองรับ URLSearchParams */ }
             }
             if (ftRegToken) {
                 handleFtRegistrationLink(ftRegToken);
             } else if (clientResetToken) {
                 handleClientResetPasswordLink(clientResetToken);
+            } else if (ftResetToken) {
+                handleFtResetPasswordLink(ftResetToken);
             }
         };
 
@@ -5295,7 +5337,7 @@
         let currentFtProfile = null;
 
         function resetFtSubViews() {
-            ['ft-checking-session', 'ft-checking-reg-link', 'ft-auth-choice', 'ft-login-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
+            ['ft-checking-session', 'ft-checking-reg-link', 'ft-auth-choice', 'ft-login-form', 'ft-forgot-password-form', 'ft-reset-password-form', 'ft-register-form', 'ft-full-register-form', 'ft-status-message', 'ft-home', 'ft-profile-view', 'ft-profile-edit', 'ft-fee-config', 'ftHomeHeaderActions', 'ftHomeHeaderLeftActions'].forEach(function(id) {
                 document.getElementById(id).classList.add('hidden-element');
             });
         }
@@ -5646,6 +5688,83 @@
                 })
                 .withFailureHandler(function(err){ alert(err.message); })
                 .loginFortuneTeller(phone, password);
+        }
+
+        function showFtForgotPassword() {
+            resetFtSubViews();
+            document.getElementById('forgotFtEmail').value = '';
+            document.getElementById('forgotFtPhone').value = '';
+            document.getElementById('forgotFtBankAcc').value = '';
+            document.getElementById('ft-forgot-password-form').classList.remove('hidden-element');
+        }
+
+        function backToFtLoginFromForgot() {
+            resetFtSubViews();
+            document.getElementById('ft-login-form').classList.remove('hidden-element');
+        }
+
+        function submitFtForgotPassword() {
+            const email = document.getElementById('forgotFtEmail').value.trim();
+            const phone = document.getElementById('forgotFtPhone').value.trim();
+            const bankAcc = document.getElementById('forgotFtBankAcc').value.trim();
+            if (!email || !phone || !bankAcc) return alert('กรุณากรอกข้อมูลให้ครบทุกช่อง');
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res && res.success) {
+                        alert('ระบบได้ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปยังอีเมลที่ลงทะเบียนไว้แล้ว กรุณาตรวจสอบอีเมลของท่าน (ลิงก์มีอายุ 30 นาที)');
+                        backToFtLoginFromForgot();
+                    } else {
+                        alert((res && res.error) ? res.error : 'ไม่พบข้อมูลที่ตรงกัน');
+                    }
+                })
+                .withFailureHandler(function(err) { alert('Error: ' + err.message); })
+                .forgotFtPassword(email, phone, bankAcc);
+        }
+
+        // เปิดจากลิงก์ตั้งรหัสผ่านใหม่ที่ส่งไปทางอีเมล (?ft_reset_token=...) เทียบเท่ากับ handleClientResetPasswordLink ฝั่งลูกดวง
+        function handleFtResetPasswordLink(token) {
+            document.getElementById('adminBtn').classList.add('hidden-element');
+            document.getElementById('headerContactRow').classList.add('hidden-element');
+            document.getElementById('live-entry-page').classList.add('hidden-element');
+            document.getElementById('fortuneteller-blank-page').classList.remove('hidden-element');
+            resetFtSubViews();
+            document.getElementById('ftResetTokenVal').value = token;
+            document.getElementById('ftResetNewPassword').value = '';
+            document.getElementById('ftResetConfirmPassword').value = '';
+            document.getElementById('ftResetPasswordError').classList.add('hidden-element');
+            document.getElementById('ft-reset-password-form').classList.remove('hidden-element');
+        }
+
+        function submitFtResetPassword() {
+            const token = document.getElementById('ftResetTokenVal').value;
+            const newPassword = document.getElementById('ftResetNewPassword').value;
+            const confirmPassword = document.getElementById('ftResetConfirmPassword').value;
+            const errEl = document.getElementById('ftResetPasswordError');
+            errEl.classList.add('hidden-element');
+
+            if (!newPassword || !confirmPassword) {
+                errEl.innerText = '⚠️ กรุณากรอกรหัสผ่านใหม่ให้ครบทั้งสองช่อง'; errEl.classList.remove('hidden-element'); return;
+            }
+            if (newPassword.length < 6) {
+                errEl.innerText = '⚠️ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.classList.remove('hidden-element'); return;
+            }
+            if (newPassword !== confirmPassword) {
+                errEl.innerText = '⚠️ ยืนยันรหัสผ่านใหม่ไม่ตรงกัน'; errEl.classList.remove('hidden-element'); return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res && res.success) {
+                        alert('ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่');
+                        backToFtAuthChoice();
+                    } else {
+                        errEl.innerText = '⚠️ ' + ((res && res.error) ? res.error : 'เกิดข้อผิดพลาด');
+                        errEl.classList.remove('hidden-element');
+                    }
+                })
+                .withFailureHandler(function(err) { errEl.innerText = '⚠️ Error: ' + err.message; errEl.classList.remove('hidden-element'); })
+                .resetFtPasswordWithToken(token, newPassword);
         }
 
         function ftLogout() {
