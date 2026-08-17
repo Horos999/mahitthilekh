@@ -3826,7 +3826,9 @@
         function pollAskHistoryChat_() {
             const req = currentAskHistoryReq_;
             if (!req || document.getElementById('askHistoryStepChat').classList.contains('hidden-element')) return;
-            google.script.run
+            // ใช้ silentScriptRunner_() เสมอสำหรับการดึงข้อมูลพื้นหลังทุก 4 วินาทีนี้ เพื่อไม่ให้ป็อปอัป
+            // "กำลังดำเนินการ..." เด้งขึ้นมาบังหน้าจอซ้ำ ๆ จนพิมพ์ข้อความในช่องแชทไม่ได้
+            silentScriptRunner_()
                 .withSuccessHandler(function(res) {
                     if (!res || !res.success || !currentAskHistoryReq_ || currentAskHistoryReq_.requestId !== req.requestId) return;
                     const statusChanged = (req.convStatus || 'open') !== (res.convStatus || 'open');
@@ -3846,7 +3848,7 @@
                             ftNickname: group ? group.nickname : req.ftNickname,
                             paymentStatus: req.paymentStatus || 'unpaid'
                         };
-                        loadChatThreadInto_(req.requestId, threadEl, 'client', gateInfo);
+                        loadChatThreadInto_(req.requestId, threadEl, 'client', gateInfo, true);
                     }
                 })
                 .withFailureHandler(function() { /* เงียบไว้ ไม่ต้องแจ้งเตือน error ของการดึงข้อมูลพื้นหลัง */ })
@@ -4163,8 +4165,11 @@
         // โหลดข้อความทั้งหมดของกระทู้ (requestId) มาวาดเป็นฟองแชท ลงใน element ที่ระบุ
         // viewerRole บอกว่าใครเป็นคนดูอยู่ ('client' หรือ 'ft') เพื่อจัดข้อความของตัวเองไว้ฝั่งขวา
         // gateInfo (เฉพาะฝั่งลูกดวง) ใช้ล็อกข้อความของหมอดูไว้จนกว่าจะชำระค่าครูเรียบร้อย ({requestId, ftId, clientId, ftNickname, paymentStatus})
-        function loadChatThreadInto_(requestId, threadEl, viewerRole, gateInfo) {
-            google.script.run
+        // silent = true เมื่อเรียกจากการดึงข้อมูลพื้นหลังอัตโนมัติ (polling ทุก 4 วิ) เพื่อไม่ให้ป็อปอัป
+        // "กำลังดำเนินการ..." เด้งขึ้นมาบังหน้าจอ/บล็อกการพิมพ์ข้อความอยู่ตลอดเวลา ส่วนการเปิดแชทครั้งแรก
+        // หรือหลังส่งข้อความ (ผู้ใช้กดปุ่มเอง) ยังคงแสดงป็อปอัปตามปกติเพื่อบอกสถานะการทำงานให้ผู้ใช้ทราบ
+        function loadChatThreadInto_(requestId, threadEl, viewerRole, gateInfo, silent) {
+            (silent ? silentScriptRunner_() : google.script.run)
                 .withSuccessHandler(function(res) {
                     const list = (res && res.success && res.list) ? res.list : [];
                     renderChatThread_(threadEl, list, viewerRole, gateInfo);
@@ -4668,7 +4673,9 @@
         function pollFtAnswerChat_() {
             const req = currentFtAnswerReq_;
             if (!req || document.getElementById('ftAnswerStepChat').classList.contains('hidden-element')) return;
-            google.script.run
+            // ใช้ silentScriptRunner_() เสมอสำหรับการดึงข้อมูลพื้นหลังทุก 4 วินาทีนี้ เพื่อไม่ให้ป็อปอัป
+            // "กำลังดำเนินการ..." เด้งขึ้นมาบังหน้าจอซ้ำ ๆ จนพิมพ์ข้อความในช่องแชทไม่ได้
+            silentScriptRunner_()
                 .withSuccessHandler(function(res) {
                     if (!res || !res.success || !currentFtAnswerReq_ || currentFtAnswerReq_.requestId !== req.requestId) return;
                     const statusChanged = (req.convStatus || 'open') !== (res.convStatus || 'open');
@@ -4679,7 +4686,7 @@
                         return;
                     }
                     const threadEl = document.querySelector('#ftAnswerChatCard .ft-chat-thread');
-                    if (threadEl) loadChatThreadInto_(req.requestId, threadEl, 'ft', null);
+                    if (threadEl) loadChatThreadInto_(req.requestId, threadEl, 'ft', null, true);
                 })
                 .withFailureHandler(function() { /* เงียบไว้ ไม่ต้องแจ้งเตือน error ของการดึงข้อมูลพื้นหลัง */ })
                 .getFtRequestStatus(req.requestId);
