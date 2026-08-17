@@ -2148,15 +2148,30 @@
         <div id="client-forgot-password-form" class="hidden-element">
             <div class="input-group" style="text-align:left;">
                 <h2 style="text-align:center; margin-top:0;">🔓 ลืมรหัสผ่าน</h2>
-                <p style="font-size:0.85rem; color:#777;">กรอกข้อมูลให้ตรงกับตอนสมัครสมาชิก ระบบจะส่งรหัสผ่านปัจจุบันไปยังอีเมลของท่านทันที</p>
+                <p style="font-size:0.85rem; color:#777;">กรอกข้อมูลให้ตรงกับตอนสมัครสมาชิก ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปยังอีเมลของท่านทันที</p>
                 <label style="font-weight:bold;">อีเมล</label>
                 <input type="email" id="forgotEmail" class="text-input" placeholder="email@example.com">
                 <label style="font-weight:bold;">เบอร์มือถือ</label>
                 <input type="tel" id="forgotPhone" class="text-input" maxlength="10" inputmode="numeric" placeholder="เช่น 0812345678" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)">
                 <label style="font-weight:bold;">เลข 6 ตัวท้ายบัตรประชาชน</label>
                 <input type="text" id="forgotIdLast6" class="text-input" maxlength="6" inputmode="numeric" placeholder="xxxxxx" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)">
-                <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitClientForgotPassword()">ส่งรหัสผ่านไปยังอีเมล</button>
+                <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitClientForgotPassword()">ส่งลิงก์ตั้งรหัสผ่านใหม่ไปยังอีเมล</button>
                 <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToClientLoginFromForgot()">⬅️ ย้อนกลับ</button>
+            </div>
+        </div>
+
+        <div id="client-reset-password-form" class="hidden-element">
+            <div class="input-group" style="text-align:left;">
+                <h2 style="text-align:center; margin-top:0;">🔑 ตั้งรหัสผ่านใหม่</h2>
+                <p style="font-size:0.85rem; color:#777;">กรุณาตั้งรหัสผ่านใหม่สำหรับบัญชีของท่าน</p>
+                <input type="hidden" id="clientResetTokenVal">
+                <label style="font-weight:bold;">รหัสผ่านใหม่</label>
+                <input type="password" id="clientResetNewPassword" class="text-input" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="off">
+                <label style="font-weight:bold;">ยืนยันรหัสผ่านใหม่</label>
+                <input type="password" id="clientResetConfirmPassword" class="text-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" autocomplete="off">
+                <div id="clientResetPasswordError" class="hint-text hidden-element"></div>
+                <button class="btn btn-gold" style="width:100%; margin-top:12px; box-sizing:border-box;" onclick="submitClientResetPassword()">บันทึกรหัสผ่านใหม่</button>
+                <button class="btn" style="width:100%; margin-top:8px; box-sizing:border-box; background:#ccc; color:#333;" onclick="backToClientAuthChoice()">⬅️ ย้อนกลับ</button>
             </div>
         </div>
 
@@ -2857,12 +2872,15 @@
     <div id="adminLoginModal" class="modal">
         <div class="modal-content">
             <h2>🔐 Admin Login</h2>
-            <p>กรุณากรอกรหัสผ่านเพื่อเข้าสู่ระบบจัดการ</p>
+            <p>กรุณากรอกเบอร์มือถือและรหัสผ่านเพื่อเข้าสู่ระบบจัดการ</p>
+            <label style="font-weight:bold; display:block; text-align:left;">เบอร์มือถือ</label>
+            <input type="tel" id="adminPhoneInput" class="text-input" maxlength="10" inputmode="numeric" placeholder="เช่น 0812345678" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" onkeypress="if(event.key==='Enter'){ document.getElementById('adminPasswordInput').focus(); }">
+            <label style="font-weight:bold; display:block; text-align:left; margin-top:10px;">รหัสผ่าน</label>
             <div class="password-wrapper">
                 <input type="password" id="adminPasswordInput" class="text-input" placeholder="Password" autocomplete="off" onkeypress="if(event.key==='Enter'){ submitAdminLogin(); }">
                 <button type="button" id="adminPasswordToggleBtn" class="password-toggle-btn" onclick="toggleAdminPasswordVisibility()">👁️</button>
             </div>
-            <div id="adminLoginError" class="hint-text hidden-element">⚠️ รหัสผ่านไม่ถูกต้อง</div>
+            <div id="adminLoginError" class="hint-text hidden-element">⚠️ เบอร์มือถือหรือรหัสผ่านไม่ถูกต้อง</div>
             <div class="action-area">
                 <button class="btn btn-gold" onclick="submitAdminLogin()">เข้าสู่ระบบ</button>
                 <button class="btn" style="background:#ccc; color:#333;" onclick="closeAdminLogin()">ยกเลิก</button>
@@ -2876,8 +2894,24 @@
             <p style="font-size:0.85rem;">เลือกส่วนที่ต้องการจัดการ</p>
             <button class="btn btn-blue" style="display:block; width:100%; margin:10px 0; box-sizing:border-box;" onclick="openFtAdminPanel()">🧙‍♂️ จัดการหมอดู</button>
             <button class="btn btn-blue" style="display:block; width:100%; margin:10px 0; box-sizing:border-box;" onclick="openClientAdminPanel()">🔮 จัดการลูกดวง</button>
+            <button class="btn btn-blue" style="display:block; width:100%; margin:10px 0; box-sizing:border-box;" onclick="openAdminChangePassword()">🔑 เปลี่ยนรหัสผ่าน</button>
             <div class="action-area">
                 <button class="btn" style="background:#ccc; color:#333;" onclick="closeAdminMenu()">ปิด</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminChangePasswordModal" class="modal">
+        <div class="modal-content">
+            <h2>🔑 เปลี่ยนรหัสผ่านแอดมิน</h2>
+            <label style="font-weight:bold; display:block; text-align:left;">รหัสผ่านใหม่</label>
+            <input type="password" id="adminNewPassword" class="text-input" placeholder="อย่างน้อย 6 ตัวอักษร" autocomplete="off">
+            <label style="font-weight:bold; display:block; text-align:left; margin-top:10px;">ยืนยันรหัสผ่านใหม่</label>
+            <input type="password" id="adminConfirmNewPassword" class="text-input" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" autocomplete="off">
+            <div id="adminChangePasswordError" class="hint-text hidden-element"></div>
+            <div class="action-area">
+                <button class="btn btn-gold" onclick="submitAdminChangePassword()">บันทึกรหัสผ่านใหม่</button>
+                <button class="btn" style="background:#ccc; color:#333;" onclick="closeAdminChangePassword()">ยกเลิก</button>
             </div>
         </div>
     </div>
@@ -3213,18 +3247,28 @@
         // (คงเช็ค APP_PARAMS ไว้เผื่อกรณีเปิดผ่านหน้าเว็บของ Apps Script โดยตรงด้วยเพื่อความเข้ากันได้)
         window.onload = function() {
             let ftRegToken = null;
+            let clientResetToken = null;
             if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.ft_reg_token) {
                 ftRegToken = APP_PARAMS.ft_reg_token;
-            } else {
+            }
+            if (typeof APP_PARAMS !== 'undefined' && APP_PARAMS.client_reset_token) {
+                clientResetToken = APP_PARAMS.client_reset_token;
+            }
+            if (!ftRegToken || !clientResetToken) {
                 try {
                     const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.get('ft_reg_token')) {
+                    if (!ftRegToken && urlParams.get('ft_reg_token')) {
                         ftRegToken = urlParams.get('ft_reg_token');
+                    }
+                    if (!clientResetToken && urlParams.get('client_reset_token')) {
+                        clientResetToken = urlParams.get('client_reset_token');
                     }
                 } catch (e) { /* เบราว์เซอร์เก่าที่ไม่รองรับ URLSearchParams */ }
             }
             if (ftRegToken) {
                 handleFtRegistrationLink(ftRegToken);
+            } else if (clientResetToken) {
+                handleClientResetPasswordLink(clientResetToken);
             }
         };
 
@@ -3253,7 +3297,7 @@
         let currentClientProfile = null;
 
         function resetClientSubViews() {
-            ['client-checking-session', 'client-auth-choice', 'client-login-form', 'client-register-form', 'client-forgot-password-form', 'client-home', 'client-profile-view', 'client-profile-edit', 'clientHomeHeaderActions', 'clientHomeHeaderLeftActions'].forEach(function(id) {
+            ['client-checking-session', 'client-auth-choice', 'client-login-form', 'client-register-form', 'client-forgot-password-form', 'client-reset-password-form', 'client-home', 'client-profile-view', 'client-profile-edit', 'clientHomeHeaderActions', 'clientHomeHeaderLeftActions'].forEach(function(id) {
                 document.getElementById(id).classList.add('hidden-element');
             });
         }
@@ -3397,7 +3441,7 @@
             google.script.run
                 .withSuccessHandler(function(res) {
                     if (res && res.success) {
-                        showClientNotice('ระบบได้ส่งรหัสผ่านไปยังอีเมลที่ลงทะเบียนไว้แล้ว');
+                        showClientNotice('ระบบได้ส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปยังอีเมลที่ลงทะเบียนไว้แล้ว กรุณาตรวจสอบอีเมลของท่าน (ลิงก์มีอายุ 30 นาที)');
                         backToClientLoginFromForgot();
                     } else {
                         showClientNotice((res && res.error) ? res.error : 'ไม่พบข้อมูลที่ตรงกัน');
@@ -3405,6 +3449,51 @@
                 })
                 .withFailureHandler(function(err) { showClientNotice('Error: ' + err.message); })
                 .forgotClientPassword(email, phone, idLast6);
+        }
+
+        // เปิดจากลิงก์ตั้งรหัสผ่านใหม่ที่ส่งไปทางอีเมล (?client_reset_token=...) เทียบเท่ากับ handleFtRegistrationLink ฝั่งหมอดู
+        function handleClientResetPasswordLink(token) {
+            document.getElementById('adminBtn').classList.add('hidden-element');
+            document.getElementById('headerContactRow').classList.add('hidden-element');
+            document.getElementById('live-entry-page').classList.add('hidden-element');
+            document.getElementById('client-blank-page').classList.remove('hidden-element');
+            resetClientSubViews();
+            document.getElementById('clientResetTokenVal').value = token;
+            document.getElementById('clientResetNewPassword').value = '';
+            document.getElementById('clientResetConfirmPassword').value = '';
+            document.getElementById('clientResetPasswordError').classList.add('hidden-element');
+            document.getElementById('client-reset-password-form').classList.remove('hidden-element');
+        }
+
+        function submitClientResetPassword() {
+            const token = document.getElementById('clientResetTokenVal').value;
+            const newPassword = document.getElementById('clientResetNewPassword').value;
+            const confirmPassword = document.getElementById('clientResetConfirmPassword').value;
+            const errEl = document.getElementById('clientResetPasswordError');
+            errEl.classList.add('hidden-element');
+
+            if (!newPassword || !confirmPassword) {
+                errEl.innerText = '⚠️ กรุณากรอกรหัสผ่านใหม่ให้ครบทั้งสองช่อง'; errEl.classList.remove('hidden-element'); return;
+            }
+            if (newPassword.length < 6) {
+                errEl.innerText = '⚠️ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.classList.remove('hidden-element'); return;
+            }
+            if (newPassword !== confirmPassword) {
+                errEl.innerText = '⚠️ ยืนยันรหัสผ่านใหม่ไม่ตรงกัน'; errEl.classList.remove('hidden-element'); return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res && res.success) {
+                        showClientNotice('ตั้งรหัสผ่านใหม่เรียบร้อยแล้ว กรุณาเข้าสู่ระบบด้วยรหัสผ่านใหม่');
+                        backToClientAuthChoice();
+                    } else {
+                        errEl.innerText = '⚠️ ' + ((res && res.error) ? res.error : 'เกิดข้อผิดพลาด');
+                        errEl.classList.remove('hidden-element');
+                    }
+                })
+                .withFailureHandler(function(err) { errEl.innerText = '⚠️ Error: ' + err.message; errEl.classList.remove('hidden-element'); })
+                .resetClientPasswordWithToken(token, newPassword);
         }
 
         function showClientHome(profile) {
@@ -6049,14 +6138,16 @@
 
         // ===================== Admin =====================
         function openAdminLogin() {
+            const phoneInput = document.getElementById('adminPhoneInput');
             const pwInput = document.getElementById('adminPasswordInput');
+            phoneInput.value = '';
             pwInput.value = '';
             pwInput.type = 'password';
             document.getElementById('adminPasswordToggleBtn').innerText = '👁️';
             document.getElementById('adminLoginError').classList.add('hidden-element');
             document.getElementById('adminLoginModal').style.display = 'flex';
             setTimeout(function() {
-                document.getElementById('adminPasswordInput').focus();
+                document.getElementById('adminPhoneInput').focus();
             }, 100);
         }
 
@@ -6076,17 +6167,38 @@
             document.getElementById('adminLoginModal').style.display = 'none';
         }
 
+        let adminPhoneCache = '';
         let adminPasswordCache = '';
 
         function submitAdminLogin() {
+            const phone = document.getElementById('adminPhoneInput').value.trim();
             const pass = document.getElementById('adminPasswordInput').value;
-            if (pass !== 'Tacx4289!') {
-                document.getElementById('adminLoginError').classList.remove('hidden-element');
+            const errEl = document.getElementById('adminLoginError');
+            errEl.classList.add('hidden-element');
+
+            if (!phone || !pass) {
+                errEl.innerText = '⚠️ กรุณากรอกเบอร์มือถือและรหัสผ่านให้ครบ';
+                errEl.classList.remove('hidden-element');
                 return;
             }
-            adminPasswordCache = pass;
-            document.getElementById('adminLoginModal').style.display = 'none';
-            openAdminMenu();
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res && res.success) {
+                        adminPhoneCache = phone;
+                        adminPasswordCache = pass;
+                        document.getElementById('adminLoginModal').style.display = 'none';
+                        openAdminMenu();
+                    } else {
+                        errEl.innerText = '⚠️ ' + ((res && res.error) ? res.error : 'เบอร์มือถือหรือรหัสผ่านไม่ถูกต้อง');
+                        errEl.classList.remove('hidden-element');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    errEl.innerText = '⚠️ Error: ' + err.message;
+                    errEl.classList.remove('hidden-element');
+                })
+                .adminLogin(phone, pass);
         }
         function openAdminMenu() {
             document.getElementById('adminMenuModal').style.display = 'flex';
@@ -6094,6 +6206,60 @@
 
         function closeAdminMenu() {
             document.getElementById('adminMenuModal').style.display = 'none';
+        }
+
+        // แอดมินเปลี่ยนรหัสผ่านของตัวเองจากภายในเมนูจัดการ (เหมือนหน้าแก้ไขข้อมูลของหมอดู/ลูกดวง)
+        function openAdminChangePassword() {
+            document.getElementById('adminNewPassword').value = '';
+            document.getElementById('adminConfirmNewPassword').value = '';
+            document.getElementById('adminChangePasswordError').classList.add('hidden-element');
+            document.getElementById('adminMenuModal').style.display = 'none';
+            document.getElementById('adminChangePasswordModal').style.display = 'flex';
+        }
+
+        function closeAdminChangePassword() {
+            document.getElementById('adminChangePasswordModal').style.display = 'none';
+            document.getElementById('adminMenuModal').style.display = 'flex';
+        }
+
+        function submitAdminChangePassword() {
+            const newPassword = document.getElementById('adminNewPassword').value;
+            const confirmNewPassword = document.getElementById('adminConfirmNewPassword').value;
+            const errEl = document.getElementById('adminChangePasswordError');
+            errEl.classList.add('hidden-element');
+
+            if (!newPassword || !confirmNewPassword) {
+                errEl.innerText = '⚠️ กรุณากรอกรหัสผ่านใหม่ให้ครบทั้งสองช่อง';
+                errEl.classList.remove('hidden-element');
+                return;
+            }
+            if (newPassword.length < 6) {
+                errEl.innerText = '⚠️ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร';
+                errEl.classList.remove('hidden-element');
+                return;
+            }
+            if (newPassword !== confirmNewPassword) {
+                errEl.innerText = '⚠️ ยืนยันรหัสผ่านใหม่ไม่ตรงกัน';
+                errEl.classList.remove('hidden-element');
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (res && res.success) {
+                        adminPasswordCache = newPassword;
+                        closeAdminChangePassword();
+                        alert('✅ เปลี่ยนรหัสผ่านเรียบร้อยแล้ว กรุณาใช้รหัสผ่านใหม่ในการเข้าสู่ระบบครั้งถัดไป');
+                    } else {
+                        errEl.innerText = '⚠️ ' + ((res && res.error) ? res.error : 'เกิดข้อผิดพลาด');
+                        errEl.classList.remove('hidden-element');
+                    }
+                })
+                .withFailureHandler(function(err) {
+                    errEl.innerText = '⚠️ Error: ' + err.message;
+                    errEl.classList.remove('hidden-element');
+                })
+                .adminChangePassword(adminPhoneCache, newPassword);
         }
 
         // ===================== แอดมิน: จัดการหมอดู =====================
