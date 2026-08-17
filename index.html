@@ -2806,11 +2806,9 @@
                     <label style="font-weight:bold;">ยอดเงินที่ชำระ (บาท)</label>
                     <input type="number" id="ftPaymentAmountInput" class="text-input" min="0" step="0.01" placeholder="เช่น 300">
                     <label style="font-weight:bold;">วันที่ชำระ</label>
-                    <input type="date" id="ftPaymentDateInput" class="text-input" oninput="updateFtPaymentDatePreview_()">
-                    <span id="ftPaymentDatePreview" class="hint-text" style="display:block; margin-top:2px; margin-bottom:6px;"></span>
+                    <input type="date" id="ftPaymentDateInput" class="text-input">
                     <label style="font-weight:bold;">เวลาที่ชำระ</label>
-                    <input type="time" id="ftPaymentTimeInput" class="text-input" oninput="updateFtPaymentTimePreview_()">
-                    <span id="ftPaymentTimePreview" class="hint-text" style="display:block; margin-top:2px; margin-bottom:6px;"></span>
+                    <input type="time" id="ftPaymentTimeInput" class="text-input">
                     <label style="font-weight:bold;">แนบสลิปหลักฐานการชำระเงิน</label>
                     <input type="file" id="ftPaymentSlipFile" class="hidden-element" accept="image/*" onchange="previewFtPaymentSlip_(this)">
                     <button type="button" class="btn btn-blue" style="width:100%;" onclick="document.getElementById('ftPaymentSlipFile').click()">📎 เลือกไฟล์สลิปหลักฐาน</button>
@@ -5013,9 +5011,7 @@
             document.getElementById('ftPaymentStepNotify').classList.remove('hidden-element');
             document.getElementById('ftPaymentAmountInput').value = '';
             document.getElementById('ftPaymentDateInput').value = '';
-            document.getElementById('ftPaymentDatePreview').innerText = '';
             document.getElementById('ftPaymentTimeInput').value = '';
-            document.getElementById('ftPaymentTimePreview').innerText = '';
             document.getElementById('ftPaymentSlipFile').value = '';
             document.getElementById('ftPaymentSlipFileName').innerText = '';
             document.getElementById('ftPaymentSlipPreview').src = '';
@@ -5033,19 +5029,6 @@
             const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
             if (!y || !m || !d) return String(isoDateStr || '');
             return d + ' ' + (THAI_MONTH_NAMES_[m - 1] || '') + ' ' + (y + 543);
-        }
-
-        // แสดงตัวอย่างวันที่แบบไทยแบบสด ๆ ทันทีที่ผู้ใช้เลือกวันที่ในฟอร์มแจ้งชำระ
-        function updateFtPaymentDatePreview_() {
-            const val = document.getElementById('ftPaymentDateInput').value;
-            document.getElementById('ftPaymentDatePreview').innerText = val ? ('📅 ' + toThaiDateDisplay_(val)) : '';
-        }
-
-        // แสดงตัวอย่างเวลาแบบสด ๆ ยืนยันชัดเจนว่าเป็นรูปแบบ 24 ชั่วโมงเสมอ (input[type=time] ส่งค่ากลับมาเป็น 24 ชม.
-        // อยู่แล้วตามมาตรฐาน HTML แต่หน้าปัดเลือกเวลาของบางเบราว์เซอร์/อุปกรณ์อาจแสดงผลเป็น AM/PM จึงเพิ่มข้อความนี้ให้มั่นใจ)
-        function updateFtPaymentTimePreview_() {
-            const val = document.getElementById('ftPaymentTimeInput').value;
-            document.getElementById('ftPaymentTimePreview').innerText = val ? ('🕐 ' + val + ' น. (24 ชั่วโมง)') : '';
         }
 
         // แสดงตัวอย่างสลิปหลักฐาน + ชื่อไฟล์ที่เลือก (ภาษาไทย) ทันทีที่เลือกไฟล์
