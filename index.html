@@ -2806,11 +2806,15 @@
                     <label style="font-weight:bold;">ยอดเงินที่ชำระ (บาท)</label>
                     <input type="number" id="ftPaymentAmountInput" class="text-input" min="0" step="0.01" placeholder="เช่น 300">
                     <label style="font-weight:bold;">วันที่ชำระ</label>
-                    <input type="date" id="ftPaymentDateInput" class="text-input">
+                    <input type="date" id="ftPaymentDateInput" class="text-input" oninput="updateFtPaymentDatePreview_()">
+                    <span id="ftPaymentDatePreview" class="hint-text" style="display:block; margin-top:2px; margin-bottom:6px;"></span>
                     <label style="font-weight:bold;">เวลาที่ชำระ</label>
-                    <input type="time" id="ftPaymentTimeInput" class="text-input">
+                    <input type="time" id="ftPaymentTimeInput" class="text-input" oninput="updateFtPaymentTimePreview_()">
+                    <span id="ftPaymentTimePreview" class="hint-text" style="display:block; margin-top:2px; margin-bottom:6px;"></span>
                     <label style="font-weight:bold;">แนบสลิปหลักฐานการชำระเงิน</label>
-                    <input type="file" id="ftPaymentSlipFile" class="text-input" accept="image/*" onchange="previewFtPaymentSlip_(this)">
+                    <input type="file" id="ftPaymentSlipFile" class="hidden-element" accept="image/*" onchange="previewFtPaymentSlip_(this)">
+                    <button type="button" class="btn btn-blue" style="width:100%;" onclick="document.getElementById('ftPaymentSlipFile').click()">📎 เลือกไฟล์สลิปหลักฐาน</button>
+                    <span id="ftPaymentSlipFileName" class="hint-text" style="display:block; margin-top:4px;"></span>
                     <img id="ftPaymentSlipPreview" class="hidden-element" style="display:block; width:100%; max-height:220px; object-fit:contain; border-radius:8px; border:1px solid #ccc; margin-top:6px; background:#f7f7f7;" alt="ตัวอย่างสลิปหลักฐาน">
                 </div>
                 <div id="ftPaymentNotifyError" class="hint-text hidden-element"></div>
@@ -3781,6 +3785,10 @@
         }
 
         // เปิดกระทู้แชทของคำถามรายการที่เลือก (ขั้นที่ 3) ทำเครื่องหมายว่าอ่านแล้วเฉพาะกระทู้นี้ และแสดงป็อปอัปหากหมอดูขอจบการสนทนา
+        // เก็บ interval ที่กำลังดึงข้อความ/สถานะใหม่เป็นระยะขณะเปิดหน้าต่างแชทค้างไว้ (ฝั่งลูกดวง "ถามดวง")
+        // ทำให้เห็นข้อความที่อีกฝ่ายส่งมาโดยไม่ต้องปิดแล้วเปิดแชทใหม่ และเห็นการเปลี่ยนสถานะบทสนทนา (จบ/ปิดอัตโนมัติ) ทันที
+        let askHistoryChatPollInterval_ = null;
+
         function openAskHistoryChat_(req) {
             currentAskHistoryReq_ = req;
             const group = currentAskHistoryGroup_;
@@ -3805,6 +3813,44 @@
             if ((req.convStatus || 'open') === 'closed' && !req.hasReview) {
                 openFtReviewModal_(req.requestId, req.ftId, group ? group.nickname : req.ftNickname);
             }
+
+            // เริ่มดึงข้อความ/สถานะใหม่เป็นระยะขณะหน้าต่างแชทนี้เปิดอยู่ (ทุก 4 วินาที) ให้เห็นข้อความที่หมอดูส่งมาแบบเรียลไทม์
+            // โดยไม่ต้องปิดแล้วเปิดแชทใหม่ ล้าง interval เดิมก่อนเสมอ กันซ้อนกันเมื่อสลับเปิดกระทู้ไปมา
+            if (askHistoryChatPollInterval_) clearInterval(askHistoryChatPollInterval_);
+            askHistoryChatPollInterval_ = setInterval(function() { pollAskHistoryChat_(); }, 4000);
+        }
+
+        // ดึงข้อความ/สถานะล่าสุดของกระทู้ที่กำลังเปิดอยู่มาอัปเดตหน้าจอ (เรียกซ้ำเป็นระยะจาก askHistoryChatPollInterval_)
+        // ถ้าสถานะบทสนทนาเปลี่ยน (เช่น หมอดูขอจบ/ปิดอัตโนมัติครบ 24 ชม.) จะวาดการ์ดใหม่ทั้งใบให้ตรงกับสถานะล่าสุดทันที
+        // ถ้าสถานะเหมือนเดิม จะรีเฟรชเฉพาะกระทู้ข้อความ ไม่แตะช่องพิมพ์ กันข้อความที่กำลังพิมพ์ค้างอยู่หายไป
+        function pollAskHistoryChat_() {
+            const req = currentAskHistoryReq_;
+            if (!req || document.getElementById('askHistoryStepChat').classList.contains('hidden-element')) return;
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (!res || !res.success || !currentAskHistoryReq_ || currentAskHistoryReq_.requestId !== req.requestId) return;
+                    const statusChanged = (req.convStatus || 'open') !== (res.convStatus || 'open');
+                    req.convStatus = res.convStatus;
+                    req.paymentStatus = res.paymentStatus;
+                    if (statusChanged) {
+                        openAskHistoryChat_(req);
+                        return;
+                    }
+                    const threadEl = document.querySelector('#askHistoryChatCard .ft-chat-thread');
+                    if (threadEl) {
+                        const group = currentAskHistoryGroup_;
+                        const gateInfo = {
+                            requestId: req.requestId,
+                            ftId: group ? group.ftId : req.ftId,
+                            clientId: currentClientProfile ? currentClientProfile.clientId : '',
+                            ftNickname: group ? group.nickname : req.ftNickname,
+                            paymentStatus: req.paymentStatus || 'unpaid'
+                        };
+                        loadChatThreadInto_(req.requestId, threadEl, 'client', gateInfo);
+                    }
+                })
+                .withFailureHandler(function() { /* เงียบไว้ ไม่ต้องแจ้งเตือน error ของการดึงข้อมูลพื้นหลัง */ })
+                .getFtRequestStatus(req.requestId);
         }
 
         // สร้างการ์ดแชทแบบเต็ม (แพ็กเกจ/สถานะ/แถบจบสนทนา/กระทู้ข้อความ/ช่องพิมพ์) ของคำถามรายการเดียว ใช้ในขั้นที่ 3
@@ -3930,6 +3976,7 @@
 
         // ย้อนกลับจากกระทู้แชท (ขั้นที่ 3) ไปหน้ารายการคำถามแบบย่อ (ขั้นที่ 2)
         function backToAskHistoryDetailFromChat_() {
+            if (askHistoryChatPollInterval_) { clearInterval(askHistoryChatPollInterval_); askHistoryChatPollInterval_ = null; }
             currentAskHistoryReq_ = null;
             document.getElementById('askHistoryStepChat').classList.add('hidden-element');
             document.getElementById('askHistoryStepDetail').classList.remove('hidden-element');
@@ -3943,6 +3990,9 @@
                 .withSuccessHandler(function(res) {
                     if (res && res.success) {
                         if (currentAskHistoryReq_ && currentAskHistoryReq_.requestId === requestId) {
+                            // อัปเดตสถานะบทสนทนาในแคชให้ตรงกับผลลัพธ์ล่าสุดก่อนวาดการ์ดใหม่ ไม่งั้นการ์ดจะยังใช้สถานะเก่า
+                            // (ทำให้กล่องพิมพ์แชท/แถบแจ้งเตือนไม่อัปเดตทันที ต้องปิดแล้วเปิดแชทใหม่ถึงจะเห็นการเปลี่ยนแปลง)
+                            currentAskHistoryReq_.convStatus = res.convStatus;
                             openAskHistoryChat_(currentAskHistoryReq_);
                         }
                         // ลูกดวงยืนยันจบการสนทนาสำเร็จ (confirmed=true) -> บังคับให้รีวิวหมอดูของคำถามนี้ทันที (ทุกคำถามต้องรีวิวแยกกัน)
@@ -4240,6 +4290,7 @@
         }
 
         function closeAskDoctorHistoryModal() {
+            if (askHistoryChatPollInterval_) { clearInterval(askHistoryChatPollInterval_); askHistoryChatPollInterval_ = null; }
             document.getElementById('askDoctorHistoryModal').style.display = 'none';
         }
 
@@ -4581,6 +4632,10 @@
         }
 
         // เปิดกระทู้แชทของคำถามรายการที่เลือก (ขั้นที่ 3) และทำเครื่องหมายว่าอ่านแล้วเฉพาะกระทู้นี้
+        // เก็บ interval ที่กำลังดึงข้อความ/สถานะใหม่เป็นระยะขณะเปิดหน้าต่างแชทค้างไว้ (ฝั่งหมอดู "ตอบดวง")
+        // ทำให้เห็นข้อความที่อีกฝ่ายส่งมาโดยไม่ต้องปิดแล้วเปิดแชทใหม่ และเห็นการเปลี่ยนสถานะบทสนทนา (จบ/ปิดอัตโนมัติ) ทันที
+        let ftAnswerChatPollInterval_ = null;
+
         function openFtAnswerChat_(req) {
             currentFtAnswerReq_ = req;
             const group = currentFtAnswerGroup_;
@@ -4600,6 +4655,34 @@
                 if (group && group.unreadCount > 0) group.unreadCount--;
                 updateFtAnswerBadge_();
             }
+
+            // เริ่มดึงข้อความ/สถานะใหม่เป็นระยะขณะหน้าต่างแชทนี้เปิดอยู่ (ทุก 4 วินาที) ให้เห็นข้อความที่ลูกดวงส่งมาแบบเรียลไทม์
+            // โดยไม่ต้องปิดแล้วเปิดแชทใหม่ ล้าง interval เดิมก่อนเสมอ กันซ้อนกันเมื่อสลับเปิดกระทู้ไปมา
+            if (ftAnswerChatPollInterval_) clearInterval(ftAnswerChatPollInterval_);
+            ftAnswerChatPollInterval_ = setInterval(function() { pollFtAnswerChat_(); }, 4000);
+        }
+
+        // ดึงข้อความ/สถานะล่าสุดของกระทู้ที่กำลังเปิดอยู่มาอัปเดตหน้าจอ (เรียกซ้ำเป็นระยะจาก ftAnswerChatPollInterval_)
+        // ถ้าสถานะบทสนทนาเปลี่ยน (เช่น ลูกดวงยืนยัน/ปฏิเสธจบสนทนา หรือปิดอัตโนมัติครบ 24 ชม.) จะวาดการ์ดใหม่ทั้งใบให้ตรงกับสถานะล่าสุดทันที
+        // ถ้าสถานะเหมือนเดิม จะรีเฟรชเฉพาะกระทู้ข้อความ ไม่แตะช่องพิมพ์ กันข้อความที่กำลังพิมพ์ค้างอยู่หายไป
+        function pollFtAnswerChat_() {
+            const req = currentFtAnswerReq_;
+            if (!req || document.getElementById('ftAnswerStepChat').classList.contains('hidden-element')) return;
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    if (!res || !res.success || !currentFtAnswerReq_ || currentFtAnswerReq_.requestId !== req.requestId) return;
+                    const statusChanged = (req.convStatus || 'open') !== (res.convStatus || 'open');
+                    req.convStatus = res.convStatus;
+                    req.paymentStatus = res.paymentStatus;
+                    if (statusChanged) {
+                        openFtAnswerChat_(req);
+                        return;
+                    }
+                    const threadEl = document.querySelector('#ftAnswerChatCard .ft-chat-thread');
+                    if (threadEl) loadChatThreadInto_(req.requestId, threadEl, 'ft', null);
+                })
+                .withFailureHandler(function() { /* เงียบไว้ ไม่ต้องแจ้งเตือน error ของการดึงข้อมูลพื้นหลัง */ })
+                .getFtRequestStatus(req.requestId);
         }
 
         // สร้างการ์ดแชทแบบเต็ม (แพ็กเกจ/สถานะ/ปุ่มจบสนทนา/กระทู้ข้อความ/ช่องพิมพ์) ของคำถามรายการเดียว ใช้ในขั้นที่ 3
@@ -4702,6 +4785,7 @@
 
         // ย้อนกลับจากกระทู้แชท (ขั้นที่ 3) ไปหน้ารายการคำถามแบบย่อ (ขั้นที่ 2)
         function backToFtAnswerDetailFromChat_() {
+            if (ftAnswerChatPollInterval_) { clearInterval(ftAnswerChatPollInterval_); ftAnswerChatPollInterval_ = null; }
             currentFtAnswerReq_ = null;
             document.getElementById('ftAnswerStepChat').classList.add('hidden-element');
             document.getElementById('ftAnswerStepDetail').classList.remove('hidden-element');
@@ -4716,6 +4800,9 @@
                 .withSuccessHandler(function(res) {
                     if (res && res.success) {
                         if (currentFtAnswerReq_ && currentFtAnswerReq_.requestId === requestId) {
+                            // คำขอสำเร็จแปลว่าสถานะเปลี่ยนเป็น 'end_requested' เสมอ (ตามตรรกะฝั่งเซิร์ฟเวอร์) อัปเดตแคชก่อนวาดการ์ดใหม่
+                            // ไม่งั้นการ์ดจะยังใช้สถานะเก่า ('open') ต้องปิดแล้วเปิดแชทใหม่ถึงจะเห็นป้าย "รอลูกดวงยืนยัน" ที่ถูกต้อง
+                            currentFtAnswerReq_.convStatus = 'end_requested';
                             openFtAnswerChat_(currentFtAnswerReq_);
                         }
                     } else {
@@ -4779,6 +4866,7 @@
         }
 
         function closeFtAnswerModal() {
+            if (ftAnswerChatPollInterval_) { clearInterval(ftAnswerChatPollInterval_); ftAnswerChatPollInterval_ = null; }
             document.getElementById('ftAnswerModal').style.display = 'none';
         }
 
@@ -4918,22 +5006,54 @@
             document.getElementById('ftPaymentStepNotify').classList.remove('hidden-element');
             document.getElementById('ftPaymentAmountInput').value = '';
             document.getElementById('ftPaymentDateInput').value = '';
+            document.getElementById('ftPaymentDatePreview').innerText = '';
             document.getElementById('ftPaymentTimeInput').value = '';
+            document.getElementById('ftPaymentTimePreview').innerText = '';
             document.getElementById('ftPaymentSlipFile').value = '';
+            document.getElementById('ftPaymentSlipFileName').innerText = '';
             document.getElementById('ftPaymentSlipPreview').src = '';
             document.getElementById('ftPaymentSlipPreview').classList.add('hidden-element');
             document.getElementById('ftPaymentNotifyError').classList.add('hidden-element');
         }
 
-        // แสดงตัวอย่างสลิปหลักฐานทันทีที่เลือกไฟล์
+        // ชื่อเดือนภาษาไทย ใช้แปลงวันที่ให้อ่านง่ายแบบ "วัน เดือน ปี พ.ศ." (เช่น "16 สิงหาคม 2569")
+        const THAI_MONTH_NAMES_ = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+        // แปลงค่าจาก input[type=date] (รูปแบบ YYYY-MM-DD) ให้เป็นข้อความวันที่แบบไทย "วัน เดือน ปี พ.ศ."
+        function toThaiDateDisplay_(isoDateStr) {
+            const parts = String(isoDateStr || '').split('-');
+            if (parts.length !== 3) return String(isoDateStr || '');
+            const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+            if (!y || !m || !d) return String(isoDateStr || '');
+            return d + ' ' + (THAI_MONTH_NAMES_[m - 1] || '') + ' ' + (y + 543);
+        }
+
+        // แสดงตัวอย่างวันที่แบบไทยแบบสด ๆ ทันทีที่ผู้ใช้เลือกวันที่ในฟอร์มแจ้งชำระ
+        function updateFtPaymentDatePreview_() {
+            const val = document.getElementById('ftPaymentDateInput').value;
+            document.getElementById('ftPaymentDatePreview').innerText = val ? ('📅 ' + toThaiDateDisplay_(val)) : '';
+        }
+
+        // แสดงตัวอย่างเวลาแบบสด ๆ ยืนยันชัดเจนว่าเป็นรูปแบบ 24 ชั่วโมงเสมอ (input[type=time] ส่งค่ากลับมาเป็น 24 ชม.
+        // อยู่แล้วตามมาตรฐาน HTML แต่หน้าปัดเลือกเวลาของบางเบราว์เซอร์/อุปกรณ์อาจแสดงผลเป็น AM/PM จึงเพิ่มข้อความนี้ให้มั่นใจ)
+        function updateFtPaymentTimePreview_() {
+            const val = document.getElementById('ftPaymentTimeInput').value;
+            document.getElementById('ftPaymentTimePreview').innerText = val ? ('🕐 ' + val + ' น. (24 ชั่วโมง)') : '';
+        }
+
+        // แสดงตัวอย่างสลิปหลักฐาน + ชื่อไฟล์ที่เลือก (ภาษาไทย) ทันทีที่เลือกไฟล์
+        // ใช้ปุ่มกำหนดเองแทนปุ่ม "Choose File" ของเบราว์เซอร์ที่บังคับภาษาไม่ได้ (ดู input ที่ซ่อนไว้ในหน้า HTML)
         function previewFtPaymentSlip_(input) {
             const img = document.getElementById('ftPaymentSlipPreview');
+            const nameEl = document.getElementById('ftPaymentSlipFileName');
             const file = input.files && input.files[0];
             if (!file) {
                 img.src = '';
                 img.classList.add('hidden-element');
+                nameEl.innerText = '';
                 return;
             }
+            nameEl.innerText = '📄 ไฟล์ที่เลือก: ' + file.name;
             const reader = new FileReader();
             reader.onload = function(e) {
                 img.src = e.target.result;
@@ -4946,15 +5066,20 @@
         async function submitFtPaymentNotify_() {
             if (!ftPaymentContext_) return;
             const amount = document.getElementById('ftPaymentAmountInput').value.trim();
-            const payDate = document.getElementById('ftPaymentDateInput').value;
-            const payTime = document.getElementById('ftPaymentTimeInput').value;
+            const payDateRaw = document.getElementById('ftPaymentDateInput').value;
+            const payTimeRaw = document.getElementById('ftPaymentTimeInput').value;
             const errEl = document.getElementById('ftPaymentNotifyError');
 
-            if (!amount || !payDate || !payTime) {
+            if (!amount || !payDateRaw || !payTimeRaw) {
                 errEl.innerText = '⚠️ กรุณากรอกยอดเงิน วันที่ และเวลาที่ชำระให้ครบถ้วน';
                 errEl.classList.remove('hidden-element');
                 return;
             }
+
+            // แปลงวันที่/เวลาให้เป็นรูปแบบไทยที่อ่านง่าย (วัน เดือน ปี พ.ศ. และเวลาแบบ 24 ชั่วโมงชัดเจน) ก่อนส่งไปบันทึก
+            // เพื่อให้ทั้งข้อมูลที่บันทึกไว้และข้อความแจ้งทางอีเมลถึงหมอดูแสดงผลเป็นรูปแบบเดียวกันนี้เลย
+            const payDate = toThaiDateDisplay_(payDateRaw);
+            const payTime = payTimeRaw + ' น.';
 
             let slipBase64 = null;
             try {
@@ -5080,6 +5205,7 @@
             localStorage.removeItem(CLIENT_SESSION_KEY);
             currentClientProfile = null;
             if (clientAskBadgeInterval) { clearInterval(clientAskBadgeInterval); clientAskBadgeInterval = null; }
+            if (askHistoryChatPollInterval_) { clearInterval(askHistoryChatPollInterval_); askHistoryChatPollInterval_ = null; }
             resetClientSubViews();
             document.getElementById('client-auth-choice').classList.remove('hidden-element');
         }
@@ -5447,6 +5573,7 @@
             localStorage.removeItem(FT_SESSION_KEY);
             currentFtProfile = null;
             if (ftAnswerBadgeInterval) { clearInterval(ftAnswerBadgeInterval); ftAnswerBadgeInterval = null; }
+            if (ftAnswerChatPollInterval_) { clearInterval(ftAnswerChatPollInterval_); ftAnswerChatPollInterval_ = null; }
             resetFtSubViews();
             document.getElementById('ft-auth-choice').classList.remove('hidden-element');
         }
